@@ -25,6 +25,7 @@ class ConfigParams
     static var open_sensor_name
     static var closed_sensor_name
     static var doorstate_sensor_name
+    static var position_sensor_name
 
     static var moving_time          # time in seconds that the door needs to move from fully open to fully closed or vice versa
     static var relay_power_num_up
@@ -111,12 +112,20 @@ class DoorState
 
     static def to_string(state)
         if   state == _class.UNKNOWN return "UNKNOWN"
-        elif state == _class.FULL_OPEN return "FULL_OPEN"
-        elif state == _class.MOVING_DOWN return "MOVING_DOWN"
-        elif state == _class.CLOSED return "CLOSED"
-        elif state == _class.MOVING_UP return "MOVING_UP"
-        elif state == _class.OPEN return "OPEN"
+        elif state == _class.FULL_OPEN return "open"
+        elif state == _class.MOVING_DOWN return "closing"
+        elif state == _class.CLOSED return "closed"
+        elif state == _class.MOVING_UP return "opening"
+        elif state == _class.OPEN return "partial_open"
         else return "INVALID" end
+    end
+
+    static def get_fake_position(state)
+        if   state == _class.FULL_OPEN return 0
+        elif state == _class.MOVING_DOWN return 30
+        elif state == _class.CLOSED return 100
+        elif state == _class.MOVING_UP return 70
+        else return 50 end
     end
 end
 
@@ -189,6 +198,8 @@ class GarageDoor
     # Add door state value to teleperiod
     def json_append()
         var msg = string.format(",\"%s\":\"%s\"", ConfigParams.doorstate_sensor_name, DoorState.to_string(self.state))
+        tasmota.response_append(msg)
+        msg = string.format(",\"%s\":\"%s\"", ConfigParams.position_sensor_name, DoorState.get_fake_position(self.state))
         tasmota.response_append(msg)
     end
     
@@ -295,7 +306,7 @@ class GarageDoor
             "device_class" : "garage",
             "name" : ConfigParams.ha_name != "" ? ConfigParams.ha_name : "Garage Door",
             "unique_id" : f"{self._ha_id}_cover",
-            "default_entity_id!" : f"cover.{self._ha_id}",
+            "default_entity_id" : f"cover.{self._ha_id}",
             "availability_topic" : SysParams.mqtt_topic_tele_lwt,
             "payload_available" : "Online",
             "payload_not_available" : "Offline",
@@ -303,9 +314,11 @@ class GarageDoor
             "state_closing" : DoorState.to_string(DoorState.MOVING_DOWN),
             "state_open" : DoorState.to_string(DoorState.FULL_OPEN),
             "state_opening" : DoorState.to_string(DoorState.MOVING_UP),
-            #"state_stopped" : DoorState.to_string(DoorState.OPEN),
+            "state_stopped" : DoorState.to_string(DoorState.OPEN),
             "state_topic" : SysParams.mqtt_topic_tele_sensor,
             "value_template" : f"{{{{ value_json.{ConfigParams.doorstate_sensor_name} }}}}",
+            "position_topic" : SysParams.mqtt_topic_tele_sensor,
+            "position_template" : f"{{{{ value_json.{ConfigParams.position_sensor_name} }}}}",
             "command_topic" : self._mqtt_topic_cmnd_door,
             "payload_close" : ConfigParams._door_command_down,
             "payload_open" : ConfigParams._door_command_up,
