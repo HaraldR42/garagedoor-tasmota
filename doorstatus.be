@@ -111,11 +111,11 @@ class DoorState
 
     static def to_string(state)
         if   state == _class.UNKNOWN return "UNKNOWN"
-        elif state == _class.FULL_OPEN return "FULL_OPEN"
-        elif state == _class.MOVING_DOWN return "MOVING_DOWN"
-        elif state == _class.CLOSED return "CLOSED"
-        elif state == _class.MOVING_UP return "MOVING_UP"
-        elif state == _class.OPEN return "OPEN"
+        elif state == _class.FULL_OPEN return "open"
+        elif state == _class.MOVING_DOWN return "closing"
+        elif state == _class.CLOSED return "closed"
+        elif state == _class.MOVING_UP return "opening"
+        elif state == _class.OPEN return "partial_open"
         else return "INVALID" end
     end
 end
@@ -295,7 +295,7 @@ class GarageDoor
             "device_class" : "garage",
             "name" : ConfigParams.ha_name != "" ? ConfigParams.ha_name : "Garage Door",
             "unique_id" : f"{self._ha_id}_cover",
-            "default_entity_id!" : f"cover.{self._ha_id}",
+            "default_entity_id" : f"cover.{self._ha_id}",
             "availability_topic" : SysParams.mqtt_topic_tele_lwt,
             "payload_available" : "Online",
             "payload_not_available" : "Offline",
@@ -303,7 +303,7 @@ class GarageDoor
             "state_closing" : DoorState.to_string(DoorState.MOVING_DOWN),
             "state_open" : DoorState.to_string(DoorState.FULL_OPEN),
             "state_opening" : DoorState.to_string(DoorState.MOVING_UP),
-            #"state_stopped" : DoorState.to_string(DoorState.OPEN),
+            "state_stopped" : DoorState.to_string(DoorState.OPEN),
             "state_topic" : SysParams.mqtt_topic_tele_sensor,
             "value_template" : f"{{{{ value_json.{ConfigParams.doorstate_sensor_name} }}}}",
             "command_topic" : self._mqtt_topic_cmnd_door,
