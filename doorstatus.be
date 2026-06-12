@@ -110,7 +110,67 @@ class DoorState
     static var MOVING_UP   = 4
     static var OPEN        = 5
 
-    static def to_string(state)
+    var _state
+    var _last_state_change_time
+    var _last_state_duration
+    var _state_changed_callback
+
+    def init(state_changed_callback)
+        self._state_changed_callback = state_changed_callback
+        self._state = -1 # invalid state to force update on first run
+        self._last_state_change_time = tasmota.millis()
+        self._set_state_internal(_class.UNKNOWN)
+    end
+
+    def get_value()
+        return self._state
+    end
+    def get_state_duration()
+        return tasmota.millis() - self._last_state_change_time
+    end
+
+    def set_full_open()
+        return self._set_state_internal(_class.FULL_OPEN)
+    end
+    def set_moving_down()
+        return self._set_state_internal(_class.MOVING_DOWN)
+    end
+    def set_closed()
+        return self._set_state_internal(_class.CLOSED)
+    end
+    def set_moving_up()
+        return self._set_state_internal(_class.MOVING_UP)
+    end
+    def set_open()
+        return self._set_state_internal(_class.OPEN)
+    end
+
+    def to_string()
+        return _class.state_string(self._state)
+    end
+
+    def get_fake_position()
+        if   self._state == _class.FULL_OPEN return 100
+        elif self._state == _class.MOVING_DOWN return 70
+        elif self._state == _class.CLOSED return 0
+        elif self._state == _class.MOVING_UP return 30
+        else return 50 end
+    end
+
+    def _set_state_internal(new_state)
+        if new_state != self._state
+            var now = tasmota.millis()
+            self._last_state_duration = now - self._last_state_change_time
+            self._last_state_change_time = now
+            self._state = new_state
+            self._state_changed_callback(self)
+            return true
+        else
+            return false
+        end
+    end
+
+    static def state_string(state)
         if   state == _class.UNKNOWN return "UNKNOWN"
         elif state == _class.FULL_OPEN return "open"
         elif state == _class.MOVING_DOWN return "closing"
@@ -120,21 +180,13 @@ class DoorState
         else return "INVALID" end
     end
 
-    static def get_fake_position(state)
-        if   state == _class.FULL_OPEN return 100
-        elif state == _class.MOVING_DOWN return 70
-        elif state == _class.CLOSED return 0
-        elif state == _class.MOVING_UP return 30
-        else return 50 end
-    end
 end
 
 
 class GarageDoor
-    var state
+    var doorstate
     var is_open
     var is_closed
-    var _last_state_change_time
 
     var _mqtt_connected
     var _mqtt_topic_cmnd_door
@@ -148,8 +200,7 @@ class GarageDoor
     # Driver methods
 
     def init()
-        self.state = -1 # invalid state to force update on first run
-        self._set_state(DoorState.UNKNOWN)
+        self.doorstate = DoorState(/ instance -> self._doorstate_changed_callback(instance))
         self.is_open = false
         self.is_closed = false
 
@@ -172,10 +223,10 @@ class GarageDoor
 
     
     def every_second()
-        if (tasmota.millis() - self._last_state_change_time) > (ConfigParams.moving_time * 1000)
-            if (self.state == DoorState.MOVING_UP) || (self.state == DoorState.MOVING_DOWN)
+        if self.doorstate.get_state_duration() > (ConfigParams.moving_time * 1000)
+            if (self.doorstate.get_value() == DoorState.MOVING_UP) || (self.doorstate.get_value() == DoorState.MOVING_DOWN)
                 # if moving for too long, assume the door is somewhere in between fully open and closed
-                self._set_state(DoorState.OPEN)
+                self.doorstate.set_open()
             end
         end
         var old_con_stat = self._mqtt_connected
@@ -189,17 +240,17 @@ class GarageDoor
     end
 
     
-    # Display door state value in the web UI
+    # Display doorstate value in the web UI
     def web_sensor()
-        var msg = string.format("{s}Door state{m}%s{e}", DoorState.to_string(self.state))
+        var msg = string.format("{s}Door state{m}%s{e}", self.doorstate.to_string())
         tasmota.web_send_decimal(msg)
     end
     
-    # Add door state value to teleperiod
+    # Add doorstate value to teleperiod
     def json_append()
-        var msg = string.format(",\"%s\":\"%s\"", ConfigParams._doorstate_sensor_name, DoorState.to_string(self.state))
+        var msg = string.format(",\"%s\":\"%s\"", ConfigParams._doorstate_sensor_name, self.doorstate.to_string())
         tasmota.response_append(msg)
-        msg = string.format(",\"%s\":\"%s\"", ConfigParams._position_sensor_name, DoorState.get_fake_position(self.state))
+        msg = string.format(",\"%s\":\"%s\"", ConfigParams._position_sensor_name, self.doorstate.get_fake_position())
         tasmota.response_append(msg)
     end
     
@@ -216,16 +267,15 @@ class GarageDoor
     end    
 
     def _calculate_state(is_open, is_closed)
-        var old_state = self.state
         if is_open==false && is_closed==false
-            self._set_state(DoorState.OPEN)
+            self.doorstate.set_open()
         else
             if is_open != nil
                 if self.is_open != is_open
                     if is_open
-                        self._set_state(DoorState.FULL_OPEN)
+                        self.doorstate.set_full_open()
                     else
-                        self._set_state(DoorState.MOVING_DOWN)
+                        self.doorstate.set_moving_down()
                     end
                     self.is_open = is_open
                 end
@@ -233,25 +283,19 @@ class GarageDoor
             if is_closed != nil
                 if self.is_closed != is_closed
                     if is_closed
-                        self._set_state(DoorState.CLOSED)
+                        self.doorstate.set_closed()
                     else
-                        self._set_state(DoorState.MOVING_UP)
+                        self.doorstate.set_moving_up()
                     end
                     self.is_closed = is_closed
                 end
             end
         end
-        if self.state != old_state
-        end
     end
 
-    def _set_state(new_state)
-        if new_state != self.state
-            self.state = new_state
-            self._last_state_change_time = tasmota.millis()
-            tasmota.cmd("_telePeriod") # trigger teleperiod update to send new state to MQTT
-            log(f"GarageDoor: state changed to {DoorState.to_string(self.state)}")
-        end
+    def _doorstate_changed_callback(doorstate)
+        tasmota.cmd("_telePeriod") # trigger teleperiod update to send new state to MQTT
+        log(f"GarageDoor: state changed to {doorstate.to_string()}")
     end
 
     def _mqtt_on_connect()
@@ -310,11 +354,11 @@ class GarageDoor
             "availability_topic" : SysParams.mqtt_topic_tele_lwt,
             "payload_available" : "Online",
             "payload_not_available" : "Offline",
-            "state_closed" : DoorState.to_string(DoorState.CLOSED),
-            "state_closing" : DoorState.to_string(DoorState.MOVING_DOWN),
-            "state_open" : DoorState.to_string(DoorState.FULL_OPEN),
-            "state_opening" : DoorState.to_string(DoorState.MOVING_UP),
-            "state_stopped" : DoorState.to_string(DoorState.OPEN),
+            "state_closed" : DoorState.state_string(DoorState.CLOSED),
+            "state_closing" : DoorState.state_string(DoorState.MOVING_DOWN),
+            "state_open" : DoorState.state_string(DoorState.FULL_OPEN),
+            "state_opening" : DoorState.state_string(DoorState.MOVING_UP),
+            "state_stopped" : DoorState.state_string(DoorState.OPEN),
             "state_topic" : SysParams.mqtt_topic_tele_sensor,
             "value_template" : f"{{{{ value_json.{ConfigParams._doorstate_sensor_name} }}}}",
             "position_topic" : SysParams.mqtt_topic_tele_sensor,
