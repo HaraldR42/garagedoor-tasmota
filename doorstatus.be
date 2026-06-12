@@ -121,10 +121,10 @@ class DoorState
     end
 
     static def get_fake_position(state)
-        if   state == _class.FULL_OPEN return 0
-        elif state == _class.MOVING_DOWN return 30
-        elif state == _class.CLOSED return 100
-        elif state == _class.MOVING_UP return 70
+        if   state == _class.FULL_OPEN return 100
+        elif state == _class.MOVING_DOWN return 70
+        elif state == _class.CLOSED return 0
+        elif state == _class.MOVING_UP return 30
         else return 50 end
     end
 end
