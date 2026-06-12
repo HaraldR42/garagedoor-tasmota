@@ -1,7 +1,6 @@
 {
     "open_sensor_name": "IS_OPEN",
     "closed_sensor_name": "IS_CLOSED",
-    "doorstate_sensor_name": "DOOR_STATE",
 
     "moving_time": 30,
 
