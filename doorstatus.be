@@ -22,12 +22,13 @@ class ConfigParams
     static var _door_command_down = "down"
     static var _doorstate_sensor_name = "DOOR_STATE"
     static var _position_sensor_name = "POSITION"
+    static var _min_moving_time = 4*1000        # min time in msec that a door needs to move from fully open to fully closed or vice versa
+    static var _max_moving_time = 10*1000       # max time in msec that a door needs to move from fully open to fully closed or vice versa
     static var _is_initialized = _class._read_config()
 
     static var open_sensor_name
     static var closed_sensor_name
 
-    static var moving_time          # time in seconds that the door needs to move from fully open to fully closed or vice versa
     static var relay_power_num_up
     static var relay_power_num_down
 
@@ -164,13 +165,22 @@ class DoorState
     def _set_state_internal(new_state)
         if new_state != self._state
             var now = tasmota.millis()
-
             self._last_state_duration = now - self._last_state_change_time
-            if self._last_state_duration < ConfigParams.moving_time*1000
+
+            # Auto calibration: Time should be in certain bounds anyway
+            if self._last_state_duration>ConfigParams._min_moving_time && self._last_state_duration<ConfigParams._max_moving_time
+                # Auto calibration: opening
                 if self._state == _class.MOVING_UP && new_state == _class.FULL_OPEN
-                    self._opening_time = self._last_state_duration
+                    # Accept time only if uncalibrated or +/- 15% of the previous value
+                    if self._opening_time==0 || (self._last_state_duration>self._opening_time*0.85 && self._last_state_duration<self._opening_time*1.15) 
+                        self._opening_time = self._last_state_duration
+                    end
+                # Auto calibration: closing
                 elif self._state == _class.MOVING_DOWN && new_state == _class.CLOSED
-                    self._closing_time = self._last_state_duration
+                    # Accept time only if uncalibrated or +/- 15% of the previous value
+                    if self._closing_time==0 || (self._last_state_duration>self._closing_time*0.85 && self._last_state_duration<self._closing_time*1.15) 
+                        self._closing_time = self._last_state_duration
+                    end
                 end
             end
 
@@ -236,7 +246,7 @@ class GarageDoor
 
     
     def every_second()
-        if self.doorstate.get_state_duration() > (ConfigParams.moving_time * 1000)
+        if self.doorstate.get_state_duration() > (ConfigParams._max_moving_time * 1000)
             if (self.doorstate.get_value() == DoorState.MOVING_UP) || (self.doorstate.get_value() == DoorState.MOVING_DOWN)
                 # if moving for too long, assume the door is somewhere in between fully open and closed
                 self.doorstate.set_open()
