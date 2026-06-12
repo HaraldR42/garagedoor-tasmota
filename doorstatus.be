@@ -113,6 +113,8 @@ class DoorState
     var _state
     var _last_state_change_time
     var _last_state_duration
+    var _opening_time
+    var _closing_time
     var _state_changed_callback
 
     def init(state_changed_callback)
@@ -120,6 +122,8 @@ class DoorState
         self._state = -1 # invalid state to force update on first run
         self._last_state_change_time = tasmota.millis()
         self._set_state_internal(_class.UNKNOWN)
+        self._opening_time = 0
+        self._closing_time = 0
     end
 
     def get_value()
@@ -160,7 +164,16 @@ class DoorState
     def _set_state_internal(new_state)
         if new_state != self._state
             var now = tasmota.millis()
+
             self._last_state_duration = now - self._last_state_change_time
+            if self._last_state_duration < ConfigParams.moving_time*1000
+                if self._state == _class.MOVING_UP && new_state == _class.FULL_OPEN
+                    self._opening_time = self._last_state_duration
+                elif self._state == _class.MOVING_DOWN && new_state == _class.CLOSED
+                    self._closing_time = self._last_state_duration
+                end
+            end
+
             self._last_state_change_time = now
             self._state = new_state
             self._state_changed_callback(self)
@@ -242,16 +255,17 @@ class GarageDoor
     
     # Display doorstate value in the web UI
     def web_sensor()
-        var msg = string.format("{s}Door state{m}%s{e}", self.doorstate.to_string())
-        tasmota.web_send_decimal(msg)
+        tasmota.web_send( string.format("{s}Door state{m}%s{e}", self.doorstate.to_string()))
+        tasmota.web_send( string.format("{s}Last state duration{m}%.1f{e}", self.doorstate._last_state_duration/1000.0))
+        tasmota.web_send( string.format("{s}Opening time{m}%.1f{e}", self.doorstate._opening_time/1000.0))
+        tasmota.web_send( string.format("{s}Closing time{m}%.1f{e}", self.doorstate._closing_time/1000.0))
+        tasmota.web_send_decimal( string.format("{s}Door position{m}%d%%{e}", self.doorstate.get_fake_position()))
     end
     
     # Add doorstate value to teleperiod
     def json_append()
-        var msg = string.format(",\"%s\":\"%s\"", ConfigParams._doorstate_sensor_name, self.doorstate.to_string())
-        tasmota.response_append(msg)
-        msg = string.format(",\"%s\":\"%s\"", ConfigParams._position_sensor_name, self.doorstate.get_fake_position())
-        tasmota.response_append(msg)
+        tasmota.response_append(string.format(",\"%s\":\"%s\"", ConfigParams._doorstate_sensor_name, self.doorstate.to_string()))
+        tasmota.response_append(string.format(",\"%s\":\"%d\"", ConfigParams._position_sensor_name, self.doorstate.get_fake_position()))
     end
     
 
