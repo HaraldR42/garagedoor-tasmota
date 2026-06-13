@@ -394,31 +394,6 @@ class GarageDoor
             ha_device_spec["serial_number"] = ConfigParams.doordrive_serial_number
         end
 
-        # self._ha_disco_message = {
-        #     "platform" : "cover",
-        #     "device_class" : "garage",
-        #     "name" : ConfigParams.ha_name != "" ? ConfigParams.ha_name : "Garage Door",
-        #     "unique_id" : f"{self._ha_id}_cover",
-        #     "default_entity_id" : f"cover.{self._ha_id}",
-        #     "availability_topic" : SysParams.mqtt_topic_tele_lwt,
-        #     "payload_available" : "Online",
-        #     "payload_not_available" : "Offline",
-        #     "state_closed" : DoorState.state_string(DoorState.CLOSED),
-        #     "state_closing" : DoorState.state_string(DoorState.MOVING_DOWN),
-        #     "state_open" : DoorState.state_string(DoorState.FULL_OPEN),
-        #     "state_opening" : DoorState.state_string(DoorState.MOVING_UP),
-        #     "state_stopped" : DoorState.state_string(DoorState.OPEN),
-        #     "state_topic" : SysParams.mqtt_topic_tele_sensor,
-        #     "value_template" : f"{{{{ value_json.{ConfigParams._doorstate_sensor_name} }}}}",
-        #     "position_topic" : SysParams.mqtt_topic_tele_sensor,
-        #     "position_template" : f"{{{{ value_json.{ConfigParams._position_sensor_name} }}}}",
-        #     "command_topic" : self._mqtt_topic_cmnd_door,
-        #     "payload_close" : ConfigParams._door_command_down,
-        #     "payload_open" : ConfigParams._door_command_up,
-        #     "payload_stop" : nil
-        # }
-        # self._ha_disco_message["device"] = ha_device_spec
-
         var ha_disco_message = {
             "origin": {
                 "name" : "GarageDoor driver for Tasmota",
