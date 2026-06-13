@@ -149,6 +149,22 @@ class DoorState
         return _class.state_string(self.state)
     end
 
+    def get_calc_position()
+        if   self.state == _class.FULL_OPEN return 100
+        elif self.state == _class.CLOSED return 0
+        elif self.state == _class.MOVING_DOWN
+            if self.closing_time==0
+                return 75
+            end
+            return tasmota.int(100-(100*self.get_state_duration()) / self.closing_time, 0, 100)
+        elif self.state == _class.MOVING_UP
+            if self.opening_time==0
+                return 25
+            end
+            return tasmota.int((100*self.get_state_duration()) / self.opening_time, 0, 100)
+        else return 50 end
+    end
+
     def get_fake_position()
         if   self.state == _class.FULL_OPEN return 100
         elif self.state == _class.MOVING_DOWN return 70
@@ -259,6 +275,10 @@ class GarageDoor
                 self._mqtt_on_disconnect()
             end
         end
+
+        if (self.doorstate.state == DoorState.MOVING_UP) || (self.doorstate.state == DoorState.MOVING_DOWN)
+            tasmota.cmd("_telePeriod") # trigger teleperiod update to send new state to MQTT
+        end
     end
 
     
@@ -268,14 +288,14 @@ class GarageDoor
         tasmota.web_send( string.format("{s}Last state duration{m}%.1f{e}", self.doorstate._last_state_duration/1000.0))
         tasmota.web_send( string.format("{s}Opening time{m}%.1f{e}", self.doorstate.opening_time/1000.0))
         tasmota.web_send( string.format("{s}Closing time{m}%.1f{e}", self.doorstate.closing_time/1000.0))
-        tasmota.web_send_decimal( string.format("{s}Door position{m}%d%%{e}", self.doorstate.get_fake_position()))
+        tasmota.web_send_decimal( string.format("{s}Door position{m}%d%%{e}", self.doorstate.get_calc_position()))
     end
     
     # Add doorstate value to teleperiod
     def json_append()
         tasmota.response_append(string.format(",\"%s\":\"%s\"", ConfigParams._doorstate_sensor_name, self.doorstate.to_string()))
-        tasmota.response_append(string.format(",\"%s\":\"%d\"", ConfigParams._position_sensor_name, self.doorstate.get_fake_position()))
-        tasmota.response_append(string.format(",\"%s\":\"%.1f\"", ConfigParams._opentingime_sensor_name, self.doorstate.opening_time/1000.0))
+        tasmota.response_append(string.format(",\"%s\":\"%d\"", ConfigParams._position_sensor_name, self.doorstate.get_calc_position()))
+        tasmota.response_append(string.format(",\"%s\":\"%.1f\"", ConfigParams._openingtime_sensor_name, self.doorstate.opening_time/1000.0))
         tasmota.response_append(string.format(",\"%s\":\"%.1f\"", ConfigParams._closingtime_sensor_name, self.doorstate.closing_time/1000.0))
     end
     
