@@ -1,1 +1,1 @@
-load("doorstatus")
+#load("doorstatus")

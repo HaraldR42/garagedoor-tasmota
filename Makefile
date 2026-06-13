@@ -2,7 +2,7 @@
 #-- Configuration ---------------------------------------------------------------------------------------------------------
 
 run_file	:= doorstatus.be
-add_files	:= params.json
+add_files	:= params.json 
 
 device_type 	:= berner
 target_ip 		:= 172.29.2.197

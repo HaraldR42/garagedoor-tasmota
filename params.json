@@ -2,8 +2,6 @@
     "open_sensor_name": "IS_OPEN",
     "closed_sensor_name": "IS_CLOSED",
 
-    "moving_time": 30,
-
     "relay_power_num_up": 1,
     "relay_power_num_down": 2,
 
