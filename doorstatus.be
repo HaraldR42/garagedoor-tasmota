@@ -8,6 +8,7 @@ import json
 import introspect
 import mqtt
 import math
+import webserver
 
 var GARAGEDOOR_VERSION = "1.0.0"
 
@@ -165,6 +166,11 @@ class DoorState
         else return 50 end
     end
 
+    def reset_calibration()
+        self.opening_time = 0
+        self.closing_time = 0
+    end
+
     def _set_state_internal(new_state)
         if new_state != self.state
             var now = tasmota.millis()
@@ -273,9 +279,15 @@ class GarageDoor
         end
     end
 
-    
+    def web_add_main_button()
+        webserver.content_send("<p></p><button onclick='la(\"&m_reset_calibration=1\");'>Reset Calibration</button>")
+    end
+
     # Display doorstate value in the web UI
     def web_sensor()
+        if webserver.has_arg("m_reset_calibration")
+            self.doorstate.reset_calibration()
+        end
         tasmota.web_send( string.format("{s}Door state{m}%s{e}", self.doorstate.to_string()))
         tasmota.web_send( string.format("{s}Last state duration{m}%.1f{e}", self.doorstate._last_state_duration/1000.0))
         tasmota.web_send( string.format("{s}Opening time{m}%.1f{e}", self.doorstate.opening_time/1000.0))
