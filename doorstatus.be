@@ -106,7 +106,7 @@ class DoorState
     static var MOVING_UP   = 4
     static var OPEN        = 5
 
-    var _state
+    var state
     var opening_time
     var closing_time
 
@@ -116,16 +116,13 @@ class DoorState
 
     def init(state_changed_callback)
         self._state_changed_callback = state_changed_callback
-        self._state = -1 # invalid state to force update on first run
-        self._last_state_change_time = tasmota.millis()
-        self._set_state_internal(_class.UNKNOWN)
+        self.state = -1 # invalid state to force update on first run
         self.opening_time = 0
         self.closing_time = 0
+        self._last_state_change_time = tasmota.millis()
+        self._set_state_internal(_class.UNKNOWN)
     end
 
-    def get_value()
-        return self._state
-    end
     def get_state_duration()
         return tasmota.millis() - self._last_state_change_time
     end
@@ -147,32 +144,32 @@ class DoorState
     end
 
     def to_string()
-        return _class.state_string(self._state)
+        return _class.state_string(self.state)
     end
 
     def get_fake_position()
-        if   self._state == _class.FULL_OPEN return 100
-        elif self._state == _class.MOVING_DOWN return 70
-        elif self._state == _class.CLOSED return 0
-        elif self._state == _class.MOVING_UP return 30
+        if   self.state == _class.FULL_OPEN return 100
+        elif self.state == _class.MOVING_DOWN return 70
+        elif self.state == _class.CLOSED return 0
+        elif self.state == _class.MOVING_UP return 30
         else return 50 end
     end
 
     def _set_state_internal(new_state)
-        if new_state != self._state
+        if new_state != self.state
             var now = tasmota.millis()
             self._last_state_duration = now - self._last_state_change_time
 
             # Auto calibration: Time should be in certain bounds anyway
             if self._last_state_duration>ConfigParams._min_moving_time && self._last_state_duration<ConfigParams._max_moving_time
                 # Auto calibration: opening
-                if self._state == _class.MOVING_UP && new_state == _class.FULL_OPEN
+                if self.state == _class.MOVING_UP && new_state == _class.FULL_OPEN
                     # Accept time only if uncalibrated or +/- 15% of the previous value
                     if self.opening_time==0 || (self._last_state_duration>self.opening_time*0.85 && self._last_state_duration<self.opening_time*1.15) 
                         self.opening_time = self._last_state_duration
                     end
                 # Auto calibration: closing
-                elif self._state == _class.MOVING_DOWN && new_state == _class.CLOSED
+                elif self.state == _class.MOVING_DOWN && new_state == _class.CLOSED
                     # Accept time only if uncalibrated or +/- 15% of the previous value
                     if self.closing_time==0 || (self._last_state_duration>self.closing_time*0.85 && self._last_state_duration<self.closing_time*1.15) 
                         self.closing_time = self._last_state_duration
@@ -181,7 +178,7 @@ class DoorState
             end
 
             self._last_state_change_time = now
-            self._state = new_state
+            self.state = new_state
             self._state_changed_callback(self)
             return true
         else
@@ -246,7 +243,7 @@ class GarageDoor
         # if moving for too long, assume the door is stopped somewhere in between fully open and closed
         var limit = math.max(self.doorstate.opening_time*1.15, self.doorstate.closing_time*1.15)
         if self.doorstate.get_state_duration() > (limit>0 ? limit : ConfigParams._max_moving_time)
-            if (self.doorstate.get_value() == DoorState.MOVING_UP) || (self.doorstate.get_value() == DoorState.MOVING_DOWN)
+            if (self.doorstate.state == DoorState.MOVING_UP) || (self.doorstate.state == DoorState.MOVING_DOWN)
                 self.doorstate.set_open()
             end
         end
