@@ -17,6 +17,8 @@ class ConfigParams
     static var _door_command_down = "down"
     static var _doorstate_sensor_name = "DOOR_STATE"
     static var _position_sensor_name = "POSITION"
+    static var _openingtime_sensor_name = "OPENING_TIME"
+    static var _closingtime_sensor_name = "CLOSING_TIME"
     static var _min_moving_time = 4*1000        # min time in msec that a door needs to move from fully open to fully closed or vice versa
     static var _max_moving_time = 10*1000       # max time in msec that a door needs to move from fully open to fully closed or vice versa
     static var _is_initialized = _class._read_config()
@@ -273,6 +275,8 @@ class GarageDoor
     def json_append()
         tasmota.response_append(string.format(",\"%s\":\"%s\"", ConfigParams._doorstate_sensor_name, self.doorstate.to_string()))
         tasmota.response_append(string.format(",\"%s\":\"%d\"", ConfigParams._position_sensor_name, self.doorstate.get_fake_position()))
+        tasmota.response_append(string.format(",\"%s\":\"%.1f\"", ConfigParams._opentingime_sensor_name, self.doorstate.opening_time/1000.0))
+        tasmota.response_append(string.format(",\"%s\":\"%.1f\"", ConfigParams._closingtime_sensor_name, self.doorstate.closing_time/1000.0))
     end
     
 
