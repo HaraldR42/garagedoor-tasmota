@@ -1,20 +1,15 @@
-# Garage door status driver for Tasmota
+# Garage door controller for Tasmota
 #
 # (c) by Dr. harald Roelle in 2026
 #
-# This driver uses two Tasmota rules to monitor the state of a garage door based on two sensors: 
-# one that indicates if the door is fully open and another that indicates if the door is fully closed.
-# Based on the state of these sensors and the time since the last state change, the driver determines 
-# if the door is fully open, fully closed, moving up, moving down, or somewhere in between (open).
-#
-# In addition this driver includes its own extra MQTT based Home Assistant integration
 
 import string
 import json
 import introspect
 import mqtt
+import math
 
-var DOORSTATE_VERSION = "1.0.0"
+var GARAGEDOOR_VERSION = "1.0.0"
 
 class ConfigParams
     static var _param_file = "params.json"
@@ -112,10 +107,11 @@ class DoorState
     static var OPEN        = 5
 
     var _state
+    var opening_time
+    var closing_time
+
     var _last_state_change_time
     var _last_state_duration
-    var _opening_time
-    var _closing_time
     var _state_changed_callback
 
     def init(state_changed_callback)
@@ -123,8 +119,8 @@ class DoorState
         self._state = -1 # invalid state to force update on first run
         self._last_state_change_time = tasmota.millis()
         self._set_state_internal(_class.UNKNOWN)
-        self._opening_time = 0
-        self._closing_time = 0
+        self.opening_time = 0
+        self.closing_time = 0
     end
 
     def get_value()
@@ -172,14 +168,14 @@ class DoorState
                 # Auto calibration: opening
                 if self._state == _class.MOVING_UP && new_state == _class.FULL_OPEN
                     # Accept time only if uncalibrated or +/- 15% of the previous value
-                    if self._opening_time==0 || (self._last_state_duration>self._opening_time*0.85 && self._last_state_duration<self._opening_time*1.15) 
-                        self._opening_time = self._last_state_duration
+                    if self.opening_time==0 || (self._last_state_duration>self.opening_time*0.85 && self._last_state_duration<self.opening_time*1.15) 
+                        self.opening_time = self._last_state_duration
                     end
                 # Auto calibration: closing
                 elif self._state == _class.MOVING_DOWN && new_state == _class.CLOSED
                     # Accept time only if uncalibrated or +/- 15% of the previous value
-                    if self._closing_time==0 || (self._last_state_duration>self._closing_time*0.85 && self._last_state_duration<self._closing_time*1.15) 
-                        self._closing_time = self._last_state_duration
+                    if self.closing_time==0 || (self._last_state_duration>self.closing_time*0.85 && self._last_state_duration<self.closing_time*1.15) 
+                        self.closing_time = self._last_state_duration
                     end
                 end
             end
@@ -246,12 +242,16 @@ class GarageDoor
 
     
     def every_second()
-        if self.doorstate.get_state_duration() > (ConfigParams._max_moving_time * 1000)
+        
+        # if moving for too long, assume the door is stopped somewhere in between fully open and closed
+        var limit = math.max(self.doorstate.opening_time*1.15, self.doorstate.closing_time*1.15)
+        if self.doorstate.get_state_duration() > (limit>0 ? limit : ConfigParams._max_moving_time)
             if (self.doorstate.get_value() == DoorState.MOVING_UP) || (self.doorstate.get_value() == DoorState.MOVING_DOWN)
-                # if moving for too long, assume the door is somewhere in between fully open and closed
                 self.doorstate.set_open()
             end
         end
+
+        # check mqtt status
         var old_con_stat = self._mqtt_connected
         if (self._mqtt_connected := mqtt.connected()) != old_con_stat
             if self._mqtt_connected
@@ -267,8 +267,8 @@ class GarageDoor
     def web_sensor()
         tasmota.web_send( string.format("{s}Door state{m}%s{e}", self.doorstate.to_string()))
         tasmota.web_send( string.format("{s}Last state duration{m}%.1f{e}", self.doorstate._last_state_duration/1000.0))
-        tasmota.web_send( string.format("{s}Opening time{m}%.1f{e}", self.doorstate._opening_time/1000.0))
-        tasmota.web_send( string.format("{s}Closing time{m}%.1f{e}", self.doorstate._closing_time/1000.0))
+        tasmota.web_send( string.format("{s}Opening time{m}%.1f{e}", self.doorstate.opening_time/1000.0))
+        tasmota.web_send( string.format("{s}Closing time{m}%.1f{e}", self.doorstate.closing_time/1000.0))
         tasmota.web_send_decimal( string.format("{s}Door position{m}%d%%{e}", self.doorstate.get_fake_position()))
     end
     
@@ -351,7 +351,7 @@ class GarageDoor
         end
 
         var ha_device_spec = {
-            "sw_version" : f"{SysParams.tasmota_version}, DoorState {DOORSTATE_VERSION}",
+            "sw_version" : f"{SysParams.tasmota_version}, DoorState {GARAGEDOOR_VERSION}",
             "hw_version" : f"{tasmota.cmd('_status 2')['StatusFWR']['Hardware']}",
             "configuration_url" : f"http://{tasmota.cmd('_status 5')['StatusNET']['IPAddress']}",
             "identifiers" : self._ha_id,
