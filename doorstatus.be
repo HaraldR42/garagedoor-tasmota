@@ -224,7 +224,7 @@ class GarageDoor
     var _mqtt_topic_cmnd_door
 
     var _ha_id
-    var _ha_disco_message
+    var _ha_disco_message_json
     var _ha_disco_topic
 
 
@@ -370,13 +370,13 @@ class GarageDoor
     def _ha_init()
         self._ha_id = "garagedoor_" + string.tr(SysParams.mac, ":", "")
 
-        self._ha_disco_topic = ConfigParams.ha_discovery_base + "/cover/" + self._ha_id + "/main/config"
+        self._ha_disco_topic = ConfigParams.ha_discovery_base + "/device/" + self._ha_id + "/config"
         while string.find(self._ha_disco_topic, "//") != -1
             self._ha_disco_topic = string.replace(self._ha_disco_topic, "//", "/")
         end
 
         var ha_device_spec = {
-            "sw_version" : f"{SysParams.tasmota_version}, DoorState {GARAGEDOOR_VERSION}",
+            "sw_version" : f"{SysParams.tasmota_version}, GarageDoor {GARAGEDOOR_VERSION}",
             "hw_version" : f"{tasmota.cmd('_status 2')['StatusFWR']['Hardware']}",
             "configuration_url" : f"http://{tasmota.cmd('_status 5')['StatusNET']['IPAddress']}",
             "identifiers" : self._ha_id,
@@ -394,34 +394,93 @@ class GarageDoor
             ha_device_spec["serial_number"] = ConfigParams.doordrive_serial_number
         end
 
-        self._ha_disco_message = {
-            "platform" : "cover",
-            "device_class" : "garage",
-            "name" : ConfigParams.ha_name != "" ? ConfigParams.ha_name : "Garage Door",
-            "unique_id" : f"{self._ha_id}_cover",
-            "default_entity_id" : f"cover.{self._ha_id}",
+        # self._ha_disco_message = {
+        #     "platform" : "cover",
+        #     "device_class" : "garage",
+        #     "name" : ConfigParams.ha_name != "" ? ConfigParams.ha_name : "Garage Door",
+        #     "unique_id" : f"{self._ha_id}_cover",
+        #     "default_entity_id" : f"cover.{self._ha_id}",
+        #     "availability_topic" : SysParams.mqtt_topic_tele_lwt,
+        #     "payload_available" : "Online",
+        #     "payload_not_available" : "Offline",
+        #     "state_closed" : DoorState.state_string(DoorState.CLOSED),
+        #     "state_closing" : DoorState.state_string(DoorState.MOVING_DOWN),
+        #     "state_open" : DoorState.state_string(DoorState.FULL_OPEN),
+        #     "state_opening" : DoorState.state_string(DoorState.MOVING_UP),
+        #     "state_stopped" : DoorState.state_string(DoorState.OPEN),
+        #     "state_topic" : SysParams.mqtt_topic_tele_sensor,
+        #     "value_template" : f"{{{{ value_json.{ConfigParams._doorstate_sensor_name} }}}}",
+        #     "position_topic" : SysParams.mqtt_topic_tele_sensor,
+        #     "position_template" : f"{{{{ value_json.{ConfigParams._position_sensor_name} }}}}",
+        #     "command_topic" : self._mqtt_topic_cmnd_door,
+        #     "payload_close" : ConfigParams._door_command_down,
+        #     "payload_open" : ConfigParams._door_command_up,
+        #     "payload_stop" : nil
+        # }
+        # self._ha_disco_message["device"] = ha_device_spec
+
+        var ha_disco_message = {
+            "origin": {
+                "name" : "GarageDoor driver for Tasmota",
+                "sw_version" : f"{SysParams.tasmota_version}, GarageDoor {GARAGEDOOR_VERSION}",
+                "support_url" : "https://github.com/HaraldR42/garagedoor-tasmota"
+            },
+            "components": {
+                f"{self._ha_id}_cover" : {
+                    "platform" : "cover",
+                    "device_class" : "garage",
+                    "name" : ConfigParams.ha_name != "" ? ConfigParams.ha_name : "Garage Door",
+                    "unique_id" : f"{self._ha_id}_cover",
+                    "default_entity_id" : f"cover.{self._ha_id}",
+                    "state_closed" : DoorState.state_string(DoorState.CLOSED),
+                    "state_closing" : DoorState.state_string(DoorState.MOVING_DOWN),
+                    "state_open" : DoorState.state_string(DoorState.FULL_OPEN),
+                    "state_opening" : DoorState.state_string(DoorState.MOVING_UP),
+                    "state_stopped" : DoorState.state_string(DoorState.OPEN),
+                    "state_topic" : SysParams.mqtt_topic_tele_sensor,
+                    "value_template" : f"{{{{ value_json.{ConfigParams._doorstate_sensor_name} }}}}",
+                    "position_topic" : SysParams.mqtt_topic_tele_sensor,
+                    "position_template" : f"{{{{ value_json.{ConfigParams._position_sensor_name} }}}}",
+                    "command_topic" : self._mqtt_topic_cmnd_door,
+                    "payload_close" : ConfigParams._door_command_down,
+                    "payload_open" : ConfigParams._door_command_up,
+                    "payload_stop" : nil
+                },
+                f"{self._ha_id}_openingtime" : {
+                    "platform" : "sensor",
+                    "device_class" : "duration",
+                    "unique_id" : f"{self._ha_id}_openingtime",
+                    "default_entity_id" : f"sensor.{self._ha_id}.duration.opening",
+                    "name" : "Opening time",
+                    "suggested_display_precision" : 1,
+                    "state_topic" : SysParams.mqtt_topic_tele_sensor,
+                    "value_template" : f"{{{{ value_json.{ConfigParams._openingtime_sensor_name} }}}}",
+                    "unit_of_measurement" : "s"
+                },
+                f"{self._ha_id}_closingtime" : {
+                    "platform" : "sensor",
+                    "device_class" : "duration",
+                    "unique_id" : f"{self._ha_id}_closingtime",
+                    "default_entity_id" : f"sensor.{self._ha_id}.duration.closing",
+                    "name" : "Closing time",
+                    "suggested_display_precision" : 1,
+                    "state_topic" : SysParams.mqtt_topic_tele_sensor,
+                    "value_template" : f"{{{{ value_json.{ConfigParams._closingtime_sensor_name} }}}}",
+                    "unit_of_measurement" : "s"
+                },
+            },
             "availability_topic" : SysParams.mqtt_topic_tele_lwt,
             "payload_available" : "Online",
             "payload_not_available" : "Offline",
-            "state_closed" : DoorState.state_string(DoorState.CLOSED),
-            "state_closing" : DoorState.state_string(DoorState.MOVING_DOWN),
-            "state_open" : DoorState.state_string(DoorState.FULL_OPEN),
-            "state_opening" : DoorState.state_string(DoorState.MOVING_UP),
-            "state_stopped" : DoorState.state_string(DoorState.OPEN),
-            "state_topic" : SysParams.mqtt_topic_tele_sensor,
-            "value_template" : f"{{{{ value_json.{ConfigParams._doorstate_sensor_name} }}}}",
-            "position_topic" : SysParams.mqtt_topic_tele_sensor,
-            "position_template" : f"{{{{ value_json.{ConfigParams._position_sensor_name} }}}}",
-            "command_topic" : self._mqtt_topic_cmnd_door,
-            "payload_close" : ConfigParams._door_command_down,
-            "payload_open" : ConfigParams._door_command_up,
-            "payload_stop" : nil
         }
-        self._ha_disco_message["device"] = ha_device_spec
+        ha_disco_message["device"] = ha_device_spec
+
+        self._ha_disco_message_json = json.dump(ha_disco_message)
     end
 
+
     def _ha_publish_discovery()
-        mqtt.publish(self._ha_disco_topic, json.dump(self._ha_disco_message), true)        # retained
+        mqtt.publish(self._ha_disco_topic, self._ha_disco_message_json, true)        # retained
     end
 
 end
