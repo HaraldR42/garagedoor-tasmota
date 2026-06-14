@@ -8,9 +8,9 @@
     "ha_doordrive_model": "GA205",
     "ha_doordrive_serial_number": null,
 
-    "relay_power_num_up": 1,
-    "relay_power_num_down": 2,
+    "tasmota_relay_power_num_up": 1,
+    "tasmota_relay_power_num_down": 2,
 
-    "open_sensor_name": "IS_OPEN",
-    "closed_sensor_name": "IS_CLOSED"
+    "tasmota_open_sensor_name": "IS_OPEN",
+    "tasmota_closed_sensor_name": "IS_CLOSED"
 }

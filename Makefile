@@ -14,10 +14,10 @@ add_files	:= params.json
 
 SHELL = bash
 
-$(eval open_sensor_name := $(shell cat params.json | jq -r '.open_sensor_name'))
-$(eval closed_sensor_name := $(shell cat params.json | jq -r '.closed_sensor_name'))
-$(eval relay_power_num_up := $(shell cat params.json | jq -r '.relay_power_num_up'))
-$(eval relay_power_num_down := $(shell cat params.json | jq -r '.relay_power_num_down'))
+$(eval tasmota_open_sensor_name := $(shell cat params.json | jq -r '.tasmota_open_sensor_name'))
+$(eval tasmota_closed_sensor_name := $(shell cat params.json | jq -r '.tasmota_closed_sensor_name'))
+$(eval tasmota_relay_power_num_up := $(shell cat params.json | jq -r '.tasmota_relay_power_num_up'))
+$(eval tasmota_relay_power_num_down := $(shell cat params.json | jq -r '.tasmota_relay_power_num_down'))
 
 
 #-- Helper functions --------------------------------------------------------------------------------------------------------
@@ -82,19 +82,19 @@ configure:
 	$(call send_command, Setoption114 1)
 	$(call send_command, SwitchMode3 2)
 	$(call send_command, SwitchMode4 2)
-	$(call send_command, SwitchText3 $(open_sensor_name))
-	$(call send_command, SwitchText4 $(closed_sensor_name))
+	$(call send_command, SwitchText3 $(tasmota_open_sensor_name))
+	$(call send_command, SwitchText4 $(tasmota_closed_sensor_name))
 	$(call send_command, SerialLog 0)
 	$(call send_command, PulseTime1 5)
 	$(call send_command, PulseTime2 5)
-	$(call send_command, WebButton$(relay_power_num_up) Door up)
-	$(call send_command, FriendlyName$(relay_power_num_up) Door up)
-	$(call send_command, WebButton$(relay_power_num_down) Door down)
-	$(call send_command, FriendlyName$(relay_power_num_down) Door down)
+	$(call send_command, WebButton$(tasmota_relay_power_num_up) Door up)
+	$(call send_command, FriendlyName$(tasmota_relay_power_num_up) Door up)
+	$(call send_command, WebButton$(tasmota_relay_power_num_down) Door down)
+	$(call send_command, FriendlyName$(tasmota_relay_power_num_down) Door down)
 	$(call send_command, MqttClient $(device_type)-%06X)
 	$(call send_command, Topic $(device_type)-%06X)
-	$(call send_command, FullTopic /tasmota/%topic%/%prefix%/)
-	$(call send_command, MqttHost mqtt.roelle.home)
+	$(call send_command, FullTopic $(full_topic))
+	$(call send_command, MqttHost $(mqtt_host))
 	$(call send_command, WebPassword $(password))
 	$(call send_command, restart 1)
 
