@@ -11,7 +11,7 @@ import math
 import webserver
 import persist
 
-var GARAGEDOOR_VERSION = "1.0.0"
+var GARAGEDOOR_VERSION = "1.1.0"
 
 class ConfigParams
     static var _param_file = "params.json"
