@@ -22,7 +22,7 @@ class ConfigParams
     static var _openingtime_sensor_name = "OPENING_TIME"
     static var _closingtime_sensor_name = "CLOSING_TIME"
     static var _min_moving_time = 4*1000        # min time in msec that a door needs to move from fully open to fully closed or vice versa
-    static var _max_moving_time = 10*1000       # max time in msec that a door needs to move from fully open to fully closed or vice versa
+    static var _max_moving_time = 60*1000       # max time in msec that a door needs to move from fully open to fully closed or vice versa
     static var _is_initialized = _class._read_config()
 
     static var open_sensor_name
@@ -286,11 +286,15 @@ class GarageDoor
         end
 
         # if moving for too long, assume the door is stopped somewhere in between fully open and closed
-        var limit = math.max(self.doorstate.opening_time*1.15, self.doorstate.closing_time*1.15)
-        if self.doorstate.get_state_duration() > (limit>0 ? limit : ConfigParams._max_moving_time)
-            if (self.doorstate.state == DoorState.MOVING_UP) || (self.doorstate.state == DoorState.MOVING_DOWN)
-                self.doorstate.set_open()
-            end
+        var limit
+        if self.doorstate.opening_time==0 || self.doorstate.closing_time==0
+            limit = ConfigParams._max_moving_time
+        else
+            limit = math.max(self.doorstate.opening_time*1.15, self.doorstate.closing_time*1.15)
+        end
+        if    self.doorstate.get_state_duration()>limit 
+           && ( (self.doorstate.state == DoorState.MOVING_UP) || (self.doorstate.state == DoorState.MOVING_DOWN) )
+            self.doorstate.set_open()
         end
 
         # check mqtt status
