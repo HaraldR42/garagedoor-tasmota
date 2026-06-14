@@ -40,19 +40,14 @@ Using the ESP32_Relay_X2 board, the wiring is as follows:
 
 | Berner GA205<br>or sensor | ESP32_Relay_X2<br>terminal/pin | Other | Tasmota name | Function |
 | ---: | ---: | ---: | :--- | :--- |
-|  |  |  |  |  |
 | 20 | GND |  |  | GND |
 | 5 | Vcc |  |  | +24V |
-|  |  |  |  |  |
 | 21 | NO1 |  | POWER1 | Trigger open |
 |  | COM1 | GND |  |  |
-|  |  |  |  |  |
 | 23 | NO2 |  | POWER2 | Trigger close |
 |  | COM2 | GND |  |  |
-|  |  |  |  |  |
 | Reed sensor 1 | G19 |  | IS_OPEN | Fully open sensor |
 | Reed sensor 1 |  | GND |  |  |
-|  |  |  |  |  |
 | 1 | G21 |  | IS_CLOSED | Closed sensor |
 | 2 |  | GND |  |  |
 
