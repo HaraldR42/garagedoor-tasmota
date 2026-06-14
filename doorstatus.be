@@ -25,11 +25,11 @@ class ConfigParams
     static var _max_moving_time = 60*1000       # max time in msec that a door needs to move from fully open to fully closed or vice versa
     static var _is_initialized = _class._read_config()
 
-    static var open_sensor_name
-    static var closed_sensor_name
+    static var tasmota_open_sensor_name
+    static var tasmota_closed_sensor_name
 
-    static var relay_power_num_up
-    static var relay_power_num_down
+    static var tasmota_relay_power_num_up
+    static var tasmota_relay_power_num_down
 
     static var homeassistant_enabled
     static var ha_name
@@ -264,11 +264,11 @@ class GarageDoor
         self._ha_init()
 
         var statSNS = tasmota.cmd("_status 8")
-        self._calculate_state(statSNS["StatusSNS"][ConfigParams.open_sensor_name] == "ON", statSNS["StatusSNS"][ConfigParams.closed_sensor_name] == "ON")
+        self._calculate_state(statSNS["StatusSNS"][ConfigParams.tasmota_open_sensor_name] == "ON", statSNS["StatusSNS"][ConfigParams.tasmota_closed_sensor_name] == "ON")
 
         tasmota.add_driver(self)
-        tasmota.add_rule(f"{ConfigParams.open_sensor_name}#Action", / value, trigger, msg -> self._is_open_triggered(value, trigger, msg), "garage_door_is_open")
-        tasmota.add_rule(f"{ConfigParams.closed_sensor_name}#Action", / value, trigger, msg -> self._is_closed_triggered(value, trigger, msg), "garage_door_is_closed")
+        tasmota.add_rule(f"{ConfigParams.tasmota_open_sensor_name}#Action", / value, trigger, msg -> self._is_open_triggered(value, trigger, msg), "garage_door_is_open")
+        tasmota.add_rule(f"{ConfigParams.tasmota_closed_sensor_name}#Action", / value, trigger, msg -> self._is_closed_triggered(value, trigger, msg), "garage_door_is_closed")
 
         print("GarageDoor: initialized")
     end
@@ -392,9 +392,9 @@ class GarageDoor
 
     def _mqtt_do_door_movement(topic, idx, payload_s, payload_b)
         if   string.startswith(payload_s, ConfigParams._door_command_up, true)
-            tasmota.set_power(ConfigParams.relay_power_num_up-1, true)
+            tasmota.set_power(ConfigParams.tasmota_relay_power_num_up-1, true)
         elif string.startswith(payload_s, ConfigParams._door_command_down, true)
-            tasmota.set_power(ConfigParams.relay_power_num_down-1, true)
+            tasmota.set_power(ConfigParams.tasmota_relay_power_num_down-1, true)
         end
     end
 
