@@ -31,13 +31,12 @@ class ConfigParams
     static var relay_power_num_up
     static var relay_power_num_down
 
-    static var doordrive_manufacturer
-    static var doordrive_model
-    static var doordrive_serial_number
-
     static var homeassistant_enabled
     static var ha_name
     static var ha_discovery_base
+    static var ha_doordrive_manufacturer
+    static var ha_doordrive_model
+    static var ha_doordrive_serial_number
 
     static var persisting_cycle_minutes
 
@@ -422,16 +421,16 @@ class GarageDoor
             "identifiers" : self._ha_id,
             "name" : ""
         }
-        if ConfigParams.doordrive_manufacturer
-            ha_device_spec["manufacturer"] = ConfigParams.doordrive_manufacturer
-            ha_device_spec["name"] = ConfigParams.doordrive_manufacturer + " "
+        if ConfigParams.ha_doordrive_manufacturer
+            ha_device_spec["manufacturer"] = ConfigParams.ha_doordrive_manufacturer
+            ha_device_spec["name"] = ConfigParams.ha_doordrive_manufacturer + " "
         end
-        if ConfigParams.doordrive_model
-            ha_device_spec["model"] = ConfigParams.doordrive_model
-            ha_device_spec["name"] = ha_device_spec["name"] + ConfigParams.doordrive_model
+        if ConfigParams.ha_doordrive_model
+            ha_device_spec["model"] = ConfigParams.ha_doordrive_model
+            ha_device_spec["name"] = ha_device_spec["name"] + ConfigParams.ha_doordrive_model
         end
-        if ConfigParams.doordrive_serial_number
-            ha_device_spec["serial_number"] = ConfigParams.doordrive_serial_number
+        if ConfigParams.ha_doordrive_serial_number
+            ha_device_spec["serial_number"] = ConfigParams.ha_doordrive_serial_number
         end
 
         var ha_disco_message = {
