@@ -11,9 +11,9 @@ This driver extends Tasmota to act as garage door controller.
   - Last time to close
   - Calculated door position during moving (not really sensed, just calculated from moving time)
 - Self-calibrating time for opening/closing
-- Persisting opening/closing time
+- Persisting opening/closing time, optional periodically
 - Web button to reset opening/closing calibration
-- HomeAssistant integration as extra MQTT Cover Device (in addition to Tasmota's integration)
+- Optional HomeAssistant integration as extra MQTT "Cover" Device (in addition to Tasmota's integration)
 
 ## Hardware
 
@@ -25,7 +25,26 @@ Further prerequisits, either by the garage door drive itself or by external cont
 - A signal marking the closed position
 - A signal marking the fully open position
 
+### Example for Berner GA205 door drive
+
 ## Configuration and Software Installation
+
+### Install Tasmota
+
+### Configure this software
+Steps to configure the software:
+1. Edit `make.conf'
+2. Edit `params.json`
+3. Create `password.txt`
+
+#### make.conf
+device_type 	:= berner
+target_ip 		:= 172.29.2.197
+password 		:= $(shell cat password.txt)
+
+#### params.json
+
+### Configure device and install software
 
 
 ## Implementation

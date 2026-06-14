@@ -1,12 +1,16 @@
+# Garage door controller for Tasmota
+#
+# (c) by Dr. Harald Roelle in 2026
+#
 
 #-- Configuration ---------------------------------------------------------------------------------------------------------
 
+include make.conf
+
+password 		:= $(shell cat password.txt)
+
 run_file	:= doorstatus.be
 add_files	:= params.json 
-
-device_type 	:= berner
-target_ip 		:= 172.29.2.197
-password 		:= $(shell cat password.txt)
 
 SHELL = bash
 
@@ -47,10 +51,12 @@ upload: $(run_file) $(add_files)
 	done
 
 
-run: upload
+run: berry-restart
 	$(call send_command, brrestart)
 	$(call send_command, br load("$(run_file)"))
 
+berry-restart:
+	$(call send_command, brrestart)
 
 restart:
 	$(call send_command, restart 1)

@@ -1,14 +1,17 @@
 {
+    "doordrive_manufacturer": "Berner",
+    "doordrive_model": "GA205",
+    "doordrive_serial_number": null,
+
+    "persisting_cycle_minutes": 0,
+
     "open_sensor_name": "IS_OPEN",
     "closed_sensor_name": "IS_CLOSED",
 
     "relay_power_num_up": 1,
     "relay_power_num_down": 2,
 
-    "doordrive_manufacturer": "Berner",
-    "doordrive_model": "GA205",
-    "doordrive_serial_number": null,
-
+    "homeassistant_enabled": true,
     "ha_name": "Garagentor",
     "ha_discovery_base": "homeassistant/discovery"
 }
