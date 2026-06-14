@@ -11,6 +11,7 @@
     "relay_power_num_up": 1,
     "relay_power_num_down": 2,
 
+    "homeassistant_enabled": true,
     "ha_name": "Garagentor",
     "ha_discovery_base": "homeassistant/discovery"
 }

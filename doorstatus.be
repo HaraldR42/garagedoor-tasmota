@@ -35,6 +35,7 @@ class ConfigParams
     static var doordrive_model
     static var doordrive_serial_number
 
+    static var homeassistant_enabled
     static var ha_name
     static var ha_discovery_base
 
@@ -399,6 +400,10 @@ class GarageDoor
     # Custom home assistant discovery methods
 
     def _ha_init()
+        if ! ConfigParams.homeassistant_enabled
+            return
+        end
+
         self._ha_id = "garagedoor_" + string.tr(SysParams.mac, ":", "")
 
         self._ha_disco_topic = ConfigParams.ha_discovery_base + "/device/" + self._ha_id + "/config"
@@ -486,6 +491,9 @@ class GarageDoor
 
 
     def _ha_publish_discovery()
+        if ! ConfigParams.homeassistant_enabled
+            return
+        end
         mqtt.publish(self._ha_disco_topic, self._ha_disco_message_json, true)        # retained
     end
 
