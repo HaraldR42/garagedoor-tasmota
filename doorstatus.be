@@ -9,6 +9,7 @@ import introspect
 import mqtt
 import math
 import webserver
+import persist
 
 var GARAGEDOOR_VERSION = "1.0.0"
 
@@ -22,6 +23,7 @@ class ConfigParams
     static var _closingtime_sensor_name = "CLOSING_TIME"
     static var _min_moving_time = 4*1000        # min time in msec that a door needs to move from fully open to fully closed or vice versa
     static var _max_moving_time = 10*1000       # max time in msec that a door needs to move from fully open to fully closed or vice versa
+    static var _persist_period = 2*60*60*1000   # persist changed data every 2 hours
     static var _is_initialized = _class._read_config()
 
     static var open_sensor_name
@@ -120,8 +122,8 @@ class DoorState
     def init(state_changed_callback)
         self._state_changed_callback = state_changed_callback
         self.state = -1 # invalid state to force update on first run
-        self.opening_time = 0
-        self.closing_time = 0
+        self.opening_time = int(persist.find(f"{_class}.opening_time", 0))
+        self.closing_time = int(persist.find(f"{_class}.closing_time", 0))
         self._last_state_change_time = tasmota.millis()
         self._set_state_internal(_class.UNKNOWN)
     end
@@ -169,6 +171,15 @@ class DoorState
     def reset_calibration()
         self.opening_time = 0
         self.closing_time = 0
+        self.update_persistant_data(true)
+    end
+
+    def update_persistant_data(force_write)
+        persist.setmember(f"{_class}.opening_time", self.opening_time)
+        persist.setmember(f"{_class}.closing_time", self.closing_time)
+        if force_write
+            persist.save(true)
+        end
     end
 
     def _set_state_internal(new_state)
@@ -183,12 +194,14 @@ class DoorState
                     # Accept time only if uncalibrated or +/- 15% of the previous value
                     if self.opening_time==0 || (self._last_state_duration>self.opening_time*0.85 && self._last_state_duration<self.opening_time*1.15) 
                         self.opening_time = self._last_state_duration
+                        self.update_persistant_data()
                     end
                 # Auto calibration: closing
                 elif self.state == _class.MOVING_DOWN && new_state == _class.CLOSED
                     # Accept time only if uncalibrated or +/- 15% of the previous value
                     if self.closing_time==0 || (self._last_state_duration>self.closing_time*0.85 && self._last_state_duration<self.closing_time*1.15) 
                         self.closing_time = self._last_state_duration
+                        self.update_persistant_data()
                     end
                 end
             end
@@ -220,6 +233,8 @@ class GarageDoor
     var is_open
     var is_closed
 
+    var _last_persist_save
+
     var _mqtt_connected
     var _mqtt_topic_cmnd_door
 
@@ -235,6 +250,8 @@ class GarageDoor
         self.doorstate = DoorState(/ instance -> self._doorstate_changed_callback(instance))
         self.is_open = false
         self.is_closed = false
+
+        self._last_persist_save = tasmota.millis()
 
         self._mqtt_connected = false
         self._mqtt_topic_cmnd_door = SysParams.mqtt_topic_cmnd_BASE + 'Door'
@@ -255,7 +272,15 @@ class GarageDoor
 
     
     def every_second()
-        
+        var now = tasmota.millis()
+
+        # write persistant data from time to time
+        if (now-self._last_persist_save) > ConfigParams._persist_period
+            persist.save()
+            self._last_persist_save = now
+            log(f"{_class}: Persisting data")
+        end
+
         # if moving for too long, assume the door is stopped somewhere in between fully open and closed
         var limit = math.max(self.doorstate.opening_time*1.15, self.doorstate.closing_time*1.15)
         if self.doorstate.get_state_duration() > (limit>0 ? limit : ConfigParams._max_moving_time)
@@ -281,12 +306,15 @@ class GarageDoor
 
     def web_add_main_button()
         webserver.content_send("<p></p><button onclick='la(\"&m_reset_calibration=1\");'>Reset Calibration</button>")
+        webserver.content_send("<p></p><button onclick='la(\"&m_persist_data=1\");'>Persist Data</button>")
     end
 
     # Display doorstate value in the web UI
     def web_sensor()
         if webserver.has_arg("m_reset_calibration")
             self.doorstate.reset_calibration()
+        elif webserver.has_arg("m_persist_data")
+            persist.save(true)
         end
         tasmota.web_send( string.format("{s}Door state{m}%s{e}", self.doorstate.to_string()))
         tasmota.web_send( string.format("{s}Last state duration{m}%.1f{e}", self.doorstate._last_state_duration/1000.0))
