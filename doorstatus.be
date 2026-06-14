@@ -23,7 +23,6 @@ class ConfigParams
     static var _closingtime_sensor_name = "CLOSING_TIME"
     static var _min_moving_time = 4*1000        # min time in msec that a door needs to move from fully open to fully closed or vice versa
     static var _max_moving_time = 10*1000       # max time in msec that a door needs to move from fully open to fully closed or vice versa
-    static var _persist_period = 2*60*60*1000   # persist changed data every 2 hours
     static var _is_initialized = _class._read_config()
 
     static var open_sensor_name
@@ -38,6 +37,8 @@ class ConfigParams
 
     static var ha_name
     static var ha_discovery_base
+
+    static var persisting_cycle_minutes
 
     static def _read_config()
         var f = open(_class._param_file, "r")
@@ -233,6 +234,7 @@ class GarageDoor
     var is_open
     var is_closed
 
+    var _persist_period
     var _last_persist_save
 
     var _mqtt_connected
@@ -251,6 +253,7 @@ class GarageDoor
         self.is_open = false
         self.is_closed = false
 
+        self._persist_period = ConfigParams.persisting_cycle_minutes *60*1000
         self._last_persist_save = tasmota.millis()
 
         self._mqtt_connected = false
@@ -275,7 +278,7 @@ class GarageDoor
         var now = tasmota.millis()
 
         # write persistant data from time to time
-        if (now-self._last_persist_save) > ConfigParams._persist_period
+        if self._persist_period!=0 && ((now-self._last_persist_save)>self._persist_period)
             persist.save()
             self._last_persist_save = now
             log(f"{_class}: Persisting data")
